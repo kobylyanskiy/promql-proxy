@@ -1,0 +1,13 @@
+[package]
+name = "promql-proxy"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+axum = "0.8.8"
+promql-parser = "0.6.0"
+serde = { version = "1.0.228", features = ["derive", "std"]}
+tokio = { version="1.48.0", features = ["full"] }
+http-body-util = "0.1.0"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
