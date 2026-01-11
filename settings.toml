@@ -1,0 +1,20 @@
+[server]
+listen_address = "0.0.0.0:8081"
+upstream_url = "http://localhost:9091"
+log_level = "info"
+timeout_seconds = 30
+
+[routing]
+target_label = "env"
+default_tenant = "anonymous"
+
+# Mimir Upstream Configuration
+[mimir]
+endpoint = "http://mimir-gateway.monitoring.svc.cluster.local:8080/prometheus"
+tenant_header = "X-Scope-OrgID"
+
+[tenants]
+# Format: "label_value" = "mimir_tenant_id"
+prod = "production"
+staging = "staging"
+dev = "development"
