@@ -1,27 +1,50 @@
-use crate::models::{PromQuery, QueryResult};
-use axum::{Json, extract::Query};
-use promql_parser::parser;
-use promql_parser::parser::Expr;
+use crate::{AppState, models::PromQuery, promql::parse_promql};
+use axum::{
+    Json,
+    extract::{Query, State},
+    response::IntoResponse,
+};
+use reqwest::StatusCode;
+use std::sync::Arc;
 
-pub async fn query(query: Query<PromQuery>) -> Json<QueryResult> {
-    let promql: PromQuery = query.0;
+pub async fn query(
+    State(state): State<Arc<AppState>>,
+    query: Query<PromQuery>,
+) -> impl IntoResponse {
+    let prom_query_struct = query.0;
+    let labels = parse_promql(prom_query_struct.query.as_str());
 
-    match parser::parse(promql.query.as_str()) {
-        Ok(expr) => {
-            extract_labels(&expr);
-        }
-        Err(info) => println!("Err: {info:?}"),
-    }
-
-    let query_result = QueryResult {
-        status: "ok".to_string(),
-        data: vec!["development".to_string(), "staging".to_string()],
+    let target_url = match labels.get(0).map(|s| s.as_str()) {
+        Some("dev") => "http://localhost:9091",
+        Some("production") => "http://localhost:9092",
+        _ => &state.config.server.upstream_url, // fallback
     };
 
-    Json(query_result)
-}
+    tracing::info!("query: {}", &prom_query_struct.query);
+    tracing::info!("Routing query to: {}", target_url);
 
-fn extract_labels(expr: &Expr) {
-    tracing::info!("Prettify: {}", expr.prettify());
-    tracing::info!("AST: {expr:?}");
+    let response = state
+        .client
+        .get(format!("{}/api/v1/query", target_url))
+        .query(&[("query", &prom_query_struct.query)])
+        .send()
+        .await;
+
+    match response {
+        Ok(res) => {
+            let status = res.status();
+            match res.json::<serde_json::Value>().await {
+                Ok(json) => (status, Json(json)).into_response(),
+                Err(_) => (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Invalid JSON from upstream",
+                )
+                    .into_response(),
+            }
+        }
+        Err(e) => {
+            tracing::error!("Proxy error: {}", e);
+            (StatusCode::BAD_GATEWAY, "Target server unreachable").into_response()
+        }
+    }
 }
