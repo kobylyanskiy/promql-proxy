@@ -29,7 +29,6 @@ async fn main() {
     let client = reqwest::Client::new();
     let listen_address = cfg.server.listen_address.clone();
 
-    // Оборачиваем в Arc для совместного использования между потоками
     let shared_state = Arc::new(AppState {
         client,
         config: cfg,
@@ -37,6 +36,7 @@ async fn main() {
 
     let app = Router::new()
         .route("/api/v1/query", get(handlers::query))
+        .route("/api/v1/test", get(handlers::test))
         .with_state(shared_state)
         .layer(middleware::from_fn(logging::print_request_response));
 

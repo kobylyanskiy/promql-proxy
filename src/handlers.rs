@@ -5,7 +5,19 @@ use axum::{
     response::IntoResponse,
 };
 use reqwest::StatusCode;
+use serde_json::json;
 use std::sync::Arc;
+
+pub async fn test(
+    State(state): State<Arc<AppState>>,
+    query: Query<PromQuery>,
+) -> impl IntoResponse {
+    let prom_query_struct = query.0;
+    let labels = parse_promql(prom_query_struct.query.as_str());
+    tracing::info!("labels: {:#?}", labels);
+
+    Json(json!(labels))
+}
 
 pub async fn query(
     State(state): State<Arc<AppState>>,
