@@ -13,7 +13,10 @@ pub async fn test(
     query: Query<PromQuery>,
 ) -> impl IntoResponse {
     let prom_query_struct = query.0;
-    let (env, modified_query) = parse_promql(prom_query_struct.query.as_str());
+    let (env, modified_query) = parse_promql(
+        state.config.routing.target_label.clone(),
+        prom_query_struct.query.as_str(),
+    );
     tracing::info!("parsed env: {:#?}", env);
 
     let target_url = state
@@ -35,7 +38,10 @@ pub async fn query(
     query: Query<PromQuery>,
 ) -> impl IntoResponse {
     let prom_query_struct = query.0;
-    let (env, modified_query) = parse_promql(prom_query_struct.query.as_str());
+    let (env, modified_query) = parse_promql(
+        state.config.routing.target_label.clone(),
+        prom_query_struct.query.as_str(),
+    );
 
     let target_url = state
         .config

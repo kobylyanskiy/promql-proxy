@@ -37,8 +37,8 @@ async fn main() {
     let app = Router::new()
         .route("/api/v1/query", get(handlers::query))
         .route("/api/v1/test", get(handlers::test))
-        .with_state(shared_state)
-        .layer(middleware::from_fn(logging::print_request_response));
+        .with_state(shared_state);
+    // .layer(middleware::from_fn(logging::print_request_response));
 
     let listener = tokio::net::TcpListener::bind(listen_address).await.unwrap();
     tracing::debug!("listening on {}", listener.local_addr().unwrap());

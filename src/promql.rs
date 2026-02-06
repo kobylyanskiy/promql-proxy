@@ -3,20 +3,16 @@ use promql_parser::label::Matcher;
 use promql_parser::parser;
 use promql_parser::parser::Expr;
 
-fn is_not_env_label(m: &Matcher, env_out: &mut String) -> bool {
-    // TODO use target_label from config
-    if m.name == "env" && m.op == MatchOp::Equal {
-        *env_out = m.value.clone();
-        false
-    } else {
-        true
-    }
-}
-
-pub fn parse_promql(query: &str) -> (String, String) {
+pub fn parse_promql(label_name: String, query: &str) -> (String, String) {
     match parser::parse(query) {
         Ok(mut expr) => {
-            let env = extract_env(&mut expr);
+            let env = walk_expr(&label_name, &mut expr);
+            tracing::debug!("MODIFIED AST: {expr:?}");
+            if !env.is_empty() {
+                tracing::debug!("Found environment: {}", env);
+            } else {
+                tracing::debug!("No environment specified, using default receiver.");
+            }
             (env, expr.prettify())
         }
         Err(info) => {
@@ -26,60 +22,65 @@ pub fn parse_promql(query: &str) -> (String, String) {
     }
 }
 
-fn extract_env(expr: &mut Expr) -> String {
-    tracing::info!("Prettify: {}", expr.prettify());
-    let env = walk_expr(expr);
-    if !env.is_empty() {
-        tracing::info!("Found environment: {}", env);
-    } else {
-        tracing::info!("No environment specified, using default receiver.");
-    }
-    tracing::info!("MODIFIED AST: {expr:?}");
-    env
-}
-
-fn walk_expr(expr: &mut Expr) -> String {
-    let mut env_value = String::new();
+fn walk_expr(label_name: &String, expr: &mut Expr) -> String {
     match expr {
         Expr::VectorSelector(vs) => {
-            vs.matchers
-                .matchers
-                .retain(|m| is_not_env_label(m, &mut env_value));
-            env_value
+            extract_label_from_matchers(label_name, &mut vs.matchers.matchers)
         }
 
         Expr::MatrixSelector(ms) => {
-            ms.vs
-                .matchers
-                .matchers
-                .retain(|m| is_not_env_label(m, &mut env_value));
-            env_value
+            extract_label_from_matchers(label_name, &mut ms.vs.matchers.matchers)
         }
-        Expr::Aggregate(a) => walk_expr(&mut a.expr),
-        //
-        // TODO a bit complicated logic to merge both sides of query
-        // correctly
-        //
-        // (env=1) / (env=1) => 1
-        // (env=1) / (env=2) => ""
-        // (env="") / (env=1) => ""
-        // (env=1) / (env="") => ""
-        //
-        // Expr::Binary(b) => {
-        //     walk_expr(&b.lhs, out);
-        //     walk_expr(&b.rhs, out);
-        // }
-        //
-        // Expr::Unary(u) => walk_expr(&u.expr, out),
-        //
-        // Expr::Call(c) => {
-        //     for arg in &c.args.args {
-        //         walk_expr(arg, out);
-        //     }
-        // }
-        //
-        // Expr::Subquery(s) => walk_expr(&s.expr, out),
-        //
-        _ => env_value,
+
+        Expr::Aggregate(a) => walk_expr(label_name, &mut a.expr),
+        Expr::Unary(u) => walk_expr(label_name, &mut u.expr),
+        Expr::Subquery(s) => walk_expr(label_name, &mut s.expr),
+
+        Expr::Binary(b) => {
+            let left = walk_expr(label_name, &mut b.lhs);
+            let right = walk_expr(label_name, &mut b.rhs);
+
+            if !left.is_empty() && left == right {
+                left
+            } else {
+                String::new()
+            }
+        }
+
+        // TODO check one more time
+        Expr::Call(c) => {
+            let mut found = String::new();
+            for arg in &mut c.args.args {
+                let res = walk_expr(label_name, arg);
+                if !res.is_empty() {
+                    if !found.is_empty() && found != res {
+                        // Ой! В одном вызове разные окружения
+                        return String::new();
+                    }
+                    found = res;
+                }
+            }
+            found
+        }
+        _ => String::new(),
     }
+}
+
+fn extract_label_from_matchers(_label_name: &String, matchers: &mut Vec<Matcher>) -> String {
+    let mut label_value = String::new();
+
+    // retain() walks the vector and keeps elements only if the closure returns true
+    matchers.retain(|m| {
+        if m.name == "env" && m.op == MatchOp::Equal {
+            // 1. Capture the value
+            label_value = m.value.clone();
+            // 2. Return false to remove this matcher from the vector
+            false
+        } else {
+            // 3. Return true to keep everything else
+            true
+        }
+    });
+
+    label_value
 }
