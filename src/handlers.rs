@@ -16,13 +16,12 @@ pub async fn test(
     let (env, modified_query) = parse_promql(prom_query_struct.query.as_str());
     tracing::info!("parsed env: {:#?}", env);
 
-    // TODO make this dynamic
-    let target_url = match env.as_str() {
-        "dev" => "http://localhost:9091",
-        "production" => "http://localhost:9092",
-        "staging" => "http://localhost:9093",
-        _ => &state.config.server.upstream_url, // fallback
-    };
+    let target_url = state
+        .config
+        .tenants
+        .get(&env)
+        .map(|url| url.as_str())
+        .unwrap_or(state.config.routing.fallback_url.as_str());
 
     Json(json!({
         "env": env,
@@ -38,12 +37,12 @@ pub async fn query(
     let prom_query_struct = query.0;
     let (env, modified_query) = parse_promql(prom_query_struct.query.as_str());
 
-    let target_url = match env.as_str() {
-        "dev" => "http://localhost:9091",
-        "production" => "http://localhost:9092",
-        "staging" => "http://localhost:9093",
-        _ => &state.config.server.upstream_url, // fallback
-    };
+    let target_url = state
+        .config
+        .tenants
+        .get(&env)
+        .map(|url| url.as_str())
+        .unwrap_or(state.config.routing.fallback_url.as_str());
 
     tracing::info!("query: {}", &prom_query_struct.query);
     tracing::info!("Routing query to: {}", target_url);

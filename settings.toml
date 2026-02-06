@@ -1,17 +1,12 @@
 [server]
 listen_address = "0.0.0.0:8081"
-upstream_url = "http://mimir-gateway.monitoring.svc.cluster.local:8080/prometheus"
 log_level = "info"
-timeout_seconds = 30
+timeout_seconds = 60
 
 [routing]
 target_label = "env"
-default_tenant = "anonymous"
-
-# Mimir Upstream Configuration
-[mimir]
-endpoint = "http://mimir-gateway.monitoring.svc.cluster.local:8080/prometheus"
-tenant_header = "X-Scope-OrgID"
+fallback_url = "http://mimir-gateway.monitoring.svc.cluster.local:8080/prometheus"
+# default_tenant = "anonymous"
 
 [tenants]
 # Format: "label_value" = "mimir_tenant_id"

@@ -10,19 +10,18 @@ pub struct ServerConfig {
     pub listen_address: String,
     pub log_level: String,
     pub timeout_seconds: u64,
-    pub upstream_url: String,
 }
 
 #[derive(Debug, Deserialize, Clone)]
-pub struct MimirConfig {
-    pub endpoint: String,
-    pub tenant_header: String,
+pub struct RoutingConfig {
+    pub target_label: String,
+    pub fallback_url: String,
 }
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct ProxyConfig {
     pub server: ServerConfig,
-    pub mimir: MimirConfig,
+    pub routing: RoutingConfig,
     pub tenants: HashMap<String, String>,
 }
 
