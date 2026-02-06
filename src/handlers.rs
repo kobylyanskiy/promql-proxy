@@ -13,10 +13,22 @@ pub async fn test(
     query: Query<PromQuery>,
 ) -> impl IntoResponse {
     let prom_query_struct = query.0;
-    let labels = parse_promql(prom_query_struct.query.as_str());
-    tracing::info!("labels: {:#?}", labels);
+    let (env, modified_query) = parse_promql(prom_query_struct.query.as_str());
+    tracing::info!("parsed env: {:#?}", env);
 
-    Json(json!(labels))
+    // TODO make this dynamic
+    let target_url = match env.as_str() {
+        "dev" => "http://localhost:9091",
+        "production" => "http://localhost:9092",
+        "staging" => "http://localhost:9093",
+        _ => &state.config.server.upstream_url, // fallback
+    };
+
+    Json(json!({
+        "env": env,
+        "target_url": target_url,
+        "query": modified_query
+    }))
 }
 
 pub async fn query(
@@ -24,11 +36,12 @@ pub async fn query(
     query: Query<PromQuery>,
 ) -> impl IntoResponse {
     let prom_query_struct = query.0;
-    let labels = parse_promql(prom_query_struct.query.as_str());
+    let (env, modified_query) = parse_promql(prom_query_struct.query.as_str());
 
-    let target_url = match labels.get(0).map(|s| s.as_str()) {
-        Some("dev") => "http://localhost:9091",
-        Some("production") => "http://localhost:9092",
+    let target_url = match env.as_str() {
+        "dev" => "http://localhost:9091",
+        "production" => "http://localhost:9092",
+        "staging" => "http://localhost:9093",
         _ => &state.config.server.upstream_url, // fallback
     };
 
@@ -38,7 +51,7 @@ pub async fn query(
     let response = state
         .client
         .get(format!("{}/api/v1/query", target_url))
-        .query(&[("query", &prom_query_struct.query)])
+        .query(&[("query", &modified_query)])
         .send()
         .await;
 

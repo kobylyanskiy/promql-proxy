@@ -1,44 +1,59 @@
 use promql_parser::label::MatchOp;
+use promql_parser::label::Matcher;
 use promql_parser::parser;
 use promql_parser::parser::Expr;
 
-pub fn parse_promql(query: &str) -> Vec<String> {
+fn is_not_env_label(m: &Matcher, env_out: &mut String) -> bool {
+    if m.name == "env" && m.op == MatchOp::Equal {
+        *env_out = m.value.clone();
+        false
+    } else {
+        true
+    }
+}
+
+pub fn parse_promql(query: &str) -> (String, String) {
     match parser::parse(query) {
-        Ok(mut expr) => extract_labels(&mut expr),
+        Ok(mut expr) => {
+            let env = extract_env(&mut expr);
+            (env, expr.prettify())
+        }
         Err(info) => {
             tracing::warn!("PromQL parse error: {info:?}");
-            vec![]
+            (String::new(), query.to_string())
         }
     }
-
-    // vec!["dev".to_string(), "production".to_string()]
 }
 
-fn extract_labels(expr: &mut Expr) -> Vec<String> {
+fn extract_env(expr: &mut Expr) -> String {
     tracing::info!("Prettify: {}", expr.prettify());
-    let mut result = Vec::new();
-    walk_expr(expr, &mut result);
-    tracing::info!("AST: {expr:?}");
-    tracing::info!("result: {result:?}");
-    result
+    let env = walk_expr(expr);
+    if !env.is_empty() {
+        tracing::info!("Found environment: {}", env);
+    } else {
+        tracing::info!("No environment specified, using default receiver.");
+    }
+    tracing::info!("MODIFIED AST: {expr:?}");
+    env
 }
 
-// TODO right now supported only vector expressions
-// and retaining only one label
-fn walk_expr(expr: &mut Expr, out: &mut Vec<String>) {
+fn walk_expr(expr: &mut Expr) -> String {
+    let mut env_value = String::new();
     match expr {
         Expr::VectorSelector(vs) => {
             vs.matchers
                 .matchers
-                .retain(|m| !(m.name == "env" && m.op == MatchOp::Equal));
-            // TODO add MatchOp::Re
-            // currently we can send the data to the default receiver if Regex
-
-            for m in &vs.matchers.matchers {
-                out.push(m.value.clone());
-            }
+                .retain(|m| is_not_env_label(m, &mut env_value));
+            env_value
         }
 
+        Expr::MatrixSelector(ms) => {
+            ms.vs
+                .matchers
+                .matchers
+                .retain(|m| is_not_env_label(m, &mut env_value));
+            env_value
+        }
         // Expr::Aggregate(a) => walk_expr(&a.expr, out),
         //
         // Expr::Binary(b) => {
@@ -56,7 +71,6 @@ fn walk_expr(expr: &mut Expr, out: &mut Vec<String>) {
         //
         // Expr::Subquery(s) => walk_expr(&s.expr, out),
         //
-        // Expr::MatrixSelector(ms) => walk_expr(&Expr::VectorSelector(ms.vs.clone()), out),
-        _ => {}
+        _ => env_value,
     }
 }
