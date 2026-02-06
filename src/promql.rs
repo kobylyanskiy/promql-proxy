@@ -4,6 +4,7 @@ use promql_parser::parser;
 use promql_parser::parser::Expr;
 
 fn is_not_env_label(m: &Matcher, env_out: &mut String) -> bool {
+    // TODO use target_label from config
     if m.name == "env" && m.op == MatchOp::Equal {
         *env_out = m.value.clone();
         false
@@ -54,7 +55,15 @@ fn walk_expr(expr: &mut Expr) -> String {
                 .retain(|m| is_not_env_label(m, &mut env_value));
             env_value
         }
-        // Expr::Aggregate(a) => walk_expr(&a.expr, out),
+        Expr::Aggregate(a) => walk_expr(&mut a.expr),
+        //
+        // TODO a bit complicated logic to merge both sides of query
+        // correctly
+        //
+        // (env=1) / (env=1) => 1
+        // (env=1) / (env=2) => ""
+        // (env="") / (env=1) => ""
+        // (env=1) / (env="") => ""
         //
         // Expr::Binary(b) => {
         //     walk_expr(&b.lhs, out);
