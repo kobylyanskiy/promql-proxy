@@ -10,10 +10,11 @@ pub fn parse_promql(label_name: String, query: &str) -> (String, String) {
             tracing::debug!("MODIFIED AST: {expr:?}");
             if !env.is_empty() {
                 tracing::debug!("Found environment: {}", env);
+                (env, expr.prettify())
             } else {
                 tracing::debug!("No environment specified, using default receiver.");
+                (env, query.to_string())
             }
-            (env, expr.prettify())
         }
         Err(info) => {
             tracing::warn!("PromQL parse error: {info:?}");
@@ -66,12 +67,12 @@ fn walk_expr(label_name: &String, expr: &mut Expr) -> String {
     }
 }
 
-fn extract_label_from_matchers(_label_name: &String, matchers: &mut Vec<Matcher>) -> String {
+fn extract_label_from_matchers(label_name: &String, matchers: &mut Vec<Matcher>) -> String {
     let mut label_value = String::new();
 
     // retain() walks the vector and keeps elements only if the closure returns true
     matchers.retain(|m| {
-        if m.name == "env" && m.op == MatchOp::Equal {
+        if m.name == *label_name && m.op == MatchOp::Equal {
             // 1. Capture the value
             label_value = m.value.clone();
             // 2. Return false to remove this matcher from the vector
