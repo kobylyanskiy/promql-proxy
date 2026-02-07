@@ -1,19 +1,18 @@
-use promql_parser::label::MatchOp;
-use promql_parser::label::Matcher;
+use promql_parser::label::{MatchOp, Matcher};
 use promql_parser::parser;
 use promql_parser::parser::Expr;
 
 pub fn parse_promql(label_name: String, query: &str) -> (String, String) {
     match parser::parse(query) {
         Ok(mut expr) => {
-            let env = walk_expr(&label_name, &mut expr);
-            tracing::debug!("MODIFIED AST: {expr:?}");
-            if !env.is_empty() {
-                tracing::debug!("Found environment: {}", env);
-                (env, expr.prettify())
+            let label_value = walk_expr(&label_name, &mut expr);
+            tracing::debug!("Modified AST: {expr:?}");
+            if !label_value.is_empty() {
+                tracing::debug!("Found label {label_name}: {label_value}");
+                (label_value, expr.prettify())
             } else {
                 tracing::debug!("No environment specified, using default receiver.");
-                (env, query.to_string())
+                (label_value, query.to_string())
             }
         }
         Err(info) => {
@@ -73,12 +72,9 @@ fn extract_label_from_matchers(label_name: &String, matchers: &mut Vec<Matcher>)
     // retain() walks the vector and keeps elements only if the closure returns true
     matchers.retain(|m| {
         if m.name == *label_name && m.op == MatchOp::Equal {
-            // 1. Capture the value
             label_value = m.value.clone();
-            // 2. Return false to remove this matcher from the vector
             false
         } else {
-            // 3. Return true to keep everything else
             true
         }
     });
