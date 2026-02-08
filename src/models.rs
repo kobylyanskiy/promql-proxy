@@ -1,10 +1,11 @@
-use serde::{Deserialize, Serialize};
+// use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 
-#[derive(Serialize)]
-pub struct QueryResult {
-    pub status: String,
-    pub data: Vec<String>,
-}
+// #[derive(Serialize)]
+// pub struct QueryResult {
+//     pub status: String,
+//     pub data: Vec<String>,
+// }
 
 #[derive(Deserialize)]
 pub struct PromQuery {

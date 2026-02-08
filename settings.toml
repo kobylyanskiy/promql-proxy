@@ -1,7 +1,7 @@
 [server]
 listen_address = "0.0.0.0:8081"
 log_level = "info"
-timeout_seconds = 60
+timeout_seconds = 5
 
 [routing]
 target_label = "env"
@@ -10,6 +10,6 @@ fallback_url = "http://mimir-gateway.monitoring.svc.cluster.local:8080/prometheu
 
 [tenants]
 # Format: "label_value" = "mimir_tenant_id"
-prod = "production"
-staging = "staging"
-dev = "development"
+prod = "http://localhost:9090"
+staging = "http://localhost:9090"
+dev = "http://localhost:9090"

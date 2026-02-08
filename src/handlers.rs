@@ -7,6 +7,7 @@ use axum::{
 use reqwest::StatusCode;
 use serde_json::json;
 use std::sync::Arc;
+use std::time::Duration;
 
 pub async fn test(
     State(state): State<Arc<AppState>>,
@@ -57,6 +58,7 @@ pub async fn query(
         .client
         .get(format!("{}/api/v1/query", target_url))
         .query(&[("query", &modified_query)])
+        .timeout(Duration::from_secs(state.config.server.timeout_seconds))
         .send()
         .await;
 
@@ -74,6 +76,7 @@ pub async fn query(
         }
         Err(e) => {
             tracing::error!("Proxy error: {}", e);
+            // TODO not realy helpful error message
             (StatusCode::BAD_GATEWAY, "Target server unreachable").into_response()
         }
     }

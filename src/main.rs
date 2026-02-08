@@ -16,16 +16,25 @@ struct AppState {
 
 #[tokio::main]
 async fn main() {
+    let cfg = ProxyConfig::load().expect("Failed to load configuration");
+    let crate_name = env!("CARGO_CRATE_NAME");
+    let log_level = &cfg.server.log_level;
+
+    let filter_str = format!("{},tower_http={}", crate_name, log_level);
+
     tracing_subscriber::registry()
-        .with(
-            tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| {
-                format!("{}=debug,tower_http=debug", env!("CARGO_CRATE_NAME")).into()
-            }),
-        )
+        .with(tracing_subscriber::EnvFilter::new(filter_str))
         .with(tracing_subscriber::fmt::layer())
         .init();
+    // tracing_subscriber::registry()
+    //     .with(
+    //         tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| {
+    //             format!("{}=debug,tower_http=debug", env!("CARGO_CRATE_NAME")).into()
+    //         }),
+    //     )
+    //     .with(tracing_subscriber::fmt::layer())
+    //     .init();
 
-    let cfg = ProxyConfig::load().expect("Failed to load configuration");
     let client = reqwest::Client::new();
     let listen_address = cfg.server.listen_address.clone();
 
@@ -37,8 +46,8 @@ async fn main() {
     let app = Router::new()
         .route("/api/v1/query", get(handlers::query))
         .route("/api/v1/test", get(handlers::test))
-        .with_state(shared_state);
-    // .layer(middleware::from_fn(logging::print_request_response));
+        .with_state(shared_state)
+        .layer(middleware::from_fn(logging::print_request_response));
 
     let listener = tokio::net::TcpListener::bind(listen_address).await.unwrap();
     tracing::debug!("listening on {}", listener.local_addr().unwrap());

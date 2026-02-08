@@ -54,7 +54,6 @@ fn walk_expr(label_name: &String, expr: &mut Expr) -> String {
                 let res = walk_expr(label_name, arg);
                 if !res.is_empty() {
                     if !found.is_empty() && found != res {
-                        // Ой! В одном вызове разные окружения
                         return String::new();
                     }
                     found = res;
