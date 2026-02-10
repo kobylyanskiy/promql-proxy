@@ -46,6 +46,7 @@ pub async fn query(
 
     let target_url = state
         .config
+        // TODO tenants/prometheuses
         .tenants
         .get(&env)
         .map(|url| url.as_str())

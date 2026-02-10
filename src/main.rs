@@ -36,6 +36,7 @@ async fn main() {
     });
 
     let app = Router::new()
+        .route("/health", get(health_handler))
         .route("/api/v1/query", get(handlers::query))
         .route("/api/v1/test", get(handlers::test))
         .with_state(shared_state)
@@ -44,4 +45,8 @@ async fn main() {
     let listener = tokio::net::TcpListener::bind(listen_address).await.unwrap();
     tracing::debug!("listening on {}", listener.local_addr().unwrap());
     axum::serve(listener, app).await.unwrap()
+}
+
+async fn health_handler() -> &'static str {
+    "OK"
 }

@@ -1,0 +1,11 @@
+apiVersion: v2
+name: promql-proxy
+description: A Rust-based PromQL proxy for multi-tenant routing and analytics
+type: application
+# This is the version of the Chart itself (increment this when you change YAMLs)
+version: 0.1.0
+# This is the version of your Rust App (the Docker image tag)
+appVersion: "0.1.0"
+maintainers:
+  - name: Kirill Kobylianskii
+    email: k.kobylyanskiy@gmail.com

@@ -6,10 +6,12 @@ timeout_seconds = 5
 [routing]
 target_label = "env"
 fallback_url = "http://mimir-gateway.monitoring.svc.cluster.local:8080/prometheus"
-# default_tenant = "anonymous"
 
 [tenants]
-# Format: "label_value" = "mimir_tenant_id"
+# header X-Scope-Org-ID is required to pass correctly
 prod = "http://localhost:9090"
 staging = "http://localhost:9090"
 dev = "http://localhost:9090"
+
+[prometheus]
+# no additional headers required

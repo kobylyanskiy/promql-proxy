@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "promql-proxy.fullname" . }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: promql-proxy
+  template:
+    metadata:
+      labels:
+        app: promql-proxy
+    spec:
+      containers:
+        - name: proxy
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          ports:
+            - containerPort: 8080
+          volumeMounts:
+            - name: config-volume
+              mountPath: /app/settings.toml
+              subPath: settings.toml
+      volumes:
+        - name: config-volume
+          configMap:
+            name: {{ include "promql-proxy.fullname" . }}-config
