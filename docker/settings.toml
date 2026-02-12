@@ -1,0 +1,13 @@
+[server]
+listen_address = "0.0.0.0:8081"
+log_level = "info"
+timeout_seconds = 30
+
+[routing]
+target_label = "env"
+fallback_url = ""
+
+[tenants]
+# Routes based on env label
+production = "http://prometheus:9090"
+dev = "http://victoriametrics:8428"

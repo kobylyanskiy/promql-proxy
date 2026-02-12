@@ -12,7 +12,17 @@ pub async fn print_request_response(
     next: Next,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
     let (parts, body) = req.into_parts();
-    let bytes = buffer_and_print("request", body).await?;
+    let method = parts.method.clone();
+    let uri = parts.uri.clone();
+
+    // Log query string for GET requests
+    if let Some(query) = uri.query() {
+        tracing::debug!("{} {} query_string: {}", method, uri.path(), query);
+    } else {
+        tracing::debug!("{} {}", method, uri.path());
+    }
+
+    let bytes = buffer_and_print(&format!("{} request body", method), body).await?;
     let req = Request::from_parts(parts, Body::from(bytes));
 
     let res = next.run(req).await;

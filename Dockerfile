@@ -32,7 +32,7 @@ COPY --from=builder /app/target/release/promql-proxy /app/promql-proxy
 COPY settings.toml /app/settings.toml
 
 # Expose the port from your ServerConfig
-EXPOSE 8080
+EXPOSE 8081
 
 # Run the proxy
 CMD ["./promql-proxy"]

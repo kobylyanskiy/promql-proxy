@@ -37,7 +37,8 @@ async fn main() {
 
     let app = Router::new()
         .route("/health", get(health_handler))
-        .route("/api/v1/query", get(handlers::query))
+        .route("/api/v1/query", get(handlers::query).post(handlers::query_post))
+        .route("/api/v1/query_range", get(handlers::query_range).post(handlers::query_range_post))
         .route("/api/v1/test", get(handlers::test))
         .with_state(shared_state)
         .layer(middleware::from_fn(logging::print_request_response));
